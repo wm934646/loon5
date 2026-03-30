@@ -1,0 +1,26 @@
+# ====================== 555电影 最强融合社区去广告插件（2026 最新版） ======================
+# 融合：墨鱼、可莉日常、社区补充
+# 移除：开屏、首页广告、播放贴片、弹窗、会员推广等
+
+[MITM]
+hostname = %APPEND% vip7.fzwdyy.cn, *.555dy.*, *.dy555.*, *.fzwdyy.*, api.555dy.com, vip*.fzwdyy.cn, *.qyfxgd.cn
+
+[Rewrite]
+# 硬阻断开屏/广告接口
+^https?://vip7\.fzwdyy\.cn/api/(getAdvertInfo|getGOOGAdvert|advert|notice) url reject-dict
+^https?://vip7\.fzwdyy\.cn/api/v\d+/ad/(startup|splash|launch|float) url reject-dict
+
+# 首页信息流（融合墨鱼精准过滤）
+^https?://vip7\.fzwdyy\.cn/api/v\d+/index/recommend url - jq 'del(.data[].ad) | del(.data[].ads) | if .data then .data |= map(select(.layout != "advert_self")) | if .data.list then .data.list |= map(select(.type != 3 and .type != "ad")) else . end else . end'
+
+# 播放页/详情页清理
+^https?://vip7\.fzwdyy\.cn/api/v\d+/(video|player|detail|play) url - jq 'del(.data.ad_info) | del(.data.float_ad) | del(.data.promotion) | del(.data.banner) | del(.data.popup) | del(.data.ads) | del(.data.ad)'
+
+# 用户中心清理
+^https?://vip7\.fzwdyy\.cn/api/v\d+/user/(center|mine) url - jq 'del(.data.vip_pop) | del(.data.banner) | del(.data.promotion) | del(.data.float) | del(.data.ad) | del(.data.ads)'
+
+# 超级兜底清理
+^https?://vip7\.fzwdyy\.cn/api/ - jq 'walk(if type == "object" then with_entries(select(.key | test("ad|popup|banner|promotion|float|start|launch|splash|vip_pop|advert|notice|getAdvert"; "i") | not)) else . end)'
+
+[General]
+force-http-engine = true
