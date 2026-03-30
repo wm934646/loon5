@@ -1,0 +1,61 @@
+# ====================== 航旅纵横 Pro 最强去广告插件（2026 优化版） ======================
+# 适用：航旅纵横 Pro（专业版）
+# 移除内容：开屏启动广告、首页信息流、发现页推广、我的页面弹窗、浮窗、所有广告相关字段
+# 推荐：Loon 最新测试版 + 自签版航旅纵横 Pro 使用
+# 融合社区规则 + JQ 高效重写
+
+[MITM]
+hostname = %APPEND% *.hanglv.com, *.hlzh.cn, api.hanglv.com, home.hanglv.com, startup.hanglv.com, discard.hanglv.com, *.umetrip.com, *.flight.com.cn
+
+# ====================== Rewrite（JQ 为主，性能最佳） ======================
+[Rewrite]
+
+# === 硬阻断开屏/启动/广告接口 ===
+^https?://(startup|home|discard|api)\.hanglv\.com/.*(ad|splash|startup|launch|popup|float|advert) url reject-dict
+^https?://(startup|home)\.hanglv\.com/gateway/api/.*(native/ad|advert) url reject-dict
+
+# === 首页 & 信息流 & 发现页清理 ===
+^https?://(home|api)\.hanglv\.com/gateway/api/.*(index|home|discover|feed|recommend|news) url - jq '
+  del(.data[].ad) 
+  | del(.data[].ads) 
+  | del(.data.ads) 
+  | del(.data.banner) 
+  | del(.data.promotion) 
+  | if .data.list then .data.list |= map(select(.type != "ad" and (.ad == null or .ad == false))) else . end
+'
+
+# === 我的页面 / 用户中心 / 个人中心推广清理 ===
+^https?://(home|api)\.hanglv\.com/gateway/api/.*(user|mine|center|profile|my) url - jq '
+  del(.data.vip_pop) 
+  | del(.data.banner) 
+  | del(.data.promotion) 
+  | del(.data.float) 
+  | del(.data.ad) 
+  | del(.data.ads) 
+  | del(.data.popup)
+'
+
+# === 航班详情 / 值机 / 其他页面广告清理 ===
+^https?://(api|home)\.hanglv\.com/gateway/api/.*(flight|checkin|detail) url - jq '
+  del(.data.ad_info) 
+  | del(.data.float_ad) 
+  | del(.data.promotion) 
+  | del(.data.banner)
+'
+
+# === 其他弹窗 & 通用广告接口 ===
+^https?://(home|startup|discard)\.hanglv\.com/.*(popup|alert|float|notice) url reject-dict
+
+# === 超级兜底清理（遍历删除所有广告关键词字段，防新版本新增广告）===
+^https?://.*\.hanglv\.com/ - jq '
+  walk(
+    if type == "object" then 
+      with_entries(
+        select(.key | test("ad|popup|banner|promotion|float|start|launch|splash|vip_pop|advert|notice"; "i") | not)
+      )
+    else . end
+  )
+'
+
+[General]
+force-http-engine = true
